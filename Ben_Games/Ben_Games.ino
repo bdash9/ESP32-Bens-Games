@@ -46,10 +46,11 @@ void run_ScottsTangerineDream(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_GordosBigAdventure(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_SpookyMaze(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_AsciiStarWars_SD(TFT_eSPI &tft, Adafruit_seesaw &ss);
+void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss);
 
 // ------------ Menu Items ---------------
 const char* game_titles[] = {
-    "Gordo Kong",               // NEW, now first
+    "Gordo Kong",
     "Gala-Gordo",
     "Gord-ogger",
     "Gordo-Gachi",
@@ -59,10 +60,11 @@ const char* game_titles[] = {
     "Scott's Tangerine Dream",
     "Gordo's Big Adventure",
     "Spooky Maze",
-    "Ascii Star Wars (17 min)"
+    "Ascii Star Wars (17 min)",
+    "Flight Fight"
 };
 enum {
-    GORDOKONG_INDEX = 0,        // NEW, now first
+    GORDOKONG_INDEX = 0,
     GALAGORDO_INDEX,
     GORDOER_INDEX,
     GORDO_INDEX,
@@ -73,6 +75,7 @@ enum {
     GORDOS_ADVENTURE_INDEX,
     SPOOKY_MAZE_INDEX,
     ASCII_STARWARS_SD_INDEX,
+    FLIGHT_FIGHT_INDEX,
     NUM_GAMES
 };
 int selected_game = 0;
@@ -239,6 +242,8 @@ void loop() {
                 run_SpookyMaze(tft, ss); break;
             case ASCII_STARWARS_SD_INDEX:
                 run_AsciiStarWars_SD(tft, ss); break;
+            case FLIGHT_FIGHT_INDEX:
+                run_FlightFight(tft, ss); break;
         }
         drawMenu(selected_game);
     }
@@ -246,7 +251,7 @@ void loop() {
 }
 
 // Game includes
-#include "Gordo_Kong.h"          // NEW!
+#include "Gordo_Kong.h"
 #include "Gala-Gordo.h"  
 #include "Gordo-er.h"         
 #include "Gordo-gachi.h"
@@ -257,3 +262,4 @@ void loop() {
 #include "Gordos_Big_Adventure.h"
 #include "Spooky_Maze.h"
 #include "Ascii_StarWars_SD.h"
+#include "Flight_Fight.h"
