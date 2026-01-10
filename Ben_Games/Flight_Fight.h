@@ -137,6 +137,22 @@ void ff_drawAltitudeIndicator(TFT_eSPI &tft, float altitude) {
     }
 }
 
+// ====== CROSSHAIR ======
+void ff_drawCrosshair(TFT_eSPI &tft) {
+    int cx = FF_SCREEN_W / 2;
+    int cy = FF_SCREEN_H / 2;
+    int size = 15;
+    int gap = 5;
+    
+    // Horizontal lines
+    tft.drawLine(cx - size, cy, cx - gap, cy, FF_COLOR_ORANGE);
+    tft.drawLine(cx + gap, cy, cx + size, cy, FF_COLOR_ORANGE);
+    
+    // Vertical lines
+    tft.drawLine(cx, cy - size, cx, cy - gap, FF_COLOR_ORANGE);
+    tft.drawLine(cx, cy + gap, cx, cy + size, FF_COLOR_ORANGE);
+}
+
 // ====== TURRET MOUNTAIN (VECTOR LINES) ======
 void ff_drawTurretMountain(TFT_eSPI &tft, int turretX, int turretY, int baseY, int heightVariation) {
     uint16_t mountainColor = 0x5ACB;
@@ -496,7 +512,7 @@ struct FF_GameState {
     FF_GroundTarget groundTargets[FF_MAX_GROUND];
     FF_EnemyBullet enemyBullets[FF_MAX_ENEMY_BULLETS];
     FF_Mountain_Peak mountainPeaks[FF_MAX_MOUNTAIN_PEAKS];
-    FF_TurretMountain turretMountains[FF_MAX_GROUND];  // ADD THIS
+    FF_TurretMountain turretMountains[FF_MAX_GROUND];
     
     bool isGroundRound;
     int targetsDestroyed;
@@ -506,6 +522,7 @@ struct FF_GameState {
     
     int lastDisplayedScore;
     int lastDisplayedLives;
+    int lastBonusLifeAt;  // ADD THIS LINE
 };
 
 FF_GameState ff_game;
@@ -521,6 +538,7 @@ void ff_initGame() {
     ff_game.lastSpawn = 0;
     ff_game.lastDisplayedScore = -1;
     ff_game.lastDisplayedLives = -1;
+    ff_game.lastBonusLifeAt = 0; 
     
     ff_flight.altitude = 50;
     ff_flight.bankAngle = 0;
@@ -650,7 +668,7 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
         
         tft.fillScreen(TFT_BLACK);
         
-        while (!gameOver && ff_game.lives > 0) {
+while (!gameOver && ff_game.lives > 0) {
             unsigned long now = millis();
             unsigned long dt = now - lastFrame;
             if (dt < 25) {
@@ -660,6 +678,15 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
             }
             lastFrame = now;
             
+            // DECLARE STATIC VARIABLES AT TOP OF LOOP
+            static int lastAltDrawn = -1;
+            static int lastEnemiesRemaining = -1;
+            
+            if (!ss.digitalRead(14)) {
+                tft.fillScreen(TFT_BLACK);
+                return;
+            }
+            
             if (!ss.digitalRead(14)) {
                 tft.fillScreen(TFT_BLACK);
                 return;
@@ -668,8 +695,38 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
             int joyX = ss.analogRead(3);
             int joyY = ss.analogRead(2);
             
-            tft.fillRect(0, FF_HUD_TOP, FF_HUD_RIGHT, FF_SCREEN_H - FF_HUD_TOP, TFT_BLACK);
+tft.fillRect(0, FF_HUD_TOP, FF_HUD_RIGHT, FF_SCREEN_H - FF_HUD_TOP, TFT_BLACK);
             tft.fillRect(0, 18, FF_SCREEN_W, 12, TFT_BLACK);
+            // Clear bottom right area below altitude indicator
+            tft.fillRect(FF_SCREEN_W - 35, 250, 35, 70, TFT_BLACK);
+
+// Draw altitude indicator only when altitude changes
+            lastAltDrawn = -1;
+            if (abs((int)ff_flight.altitude - lastAltDrawn) >= 1) {
+                tft.fillRect(FF_SCREEN_W - 35, 35, 35, 215, TFT_BLACK);
+                ff_drawAltitudeIndicator(tft, ff_flight.altitude);
+                lastAltDrawn = (int)ff_flight.altitude;
+            }
+            
+            // Draw crosshair (every frame)
+            ff_drawCrosshair(tft);
+
+                      // BONUS LIFE CHECK (every 10000 points)
+            int currentMilestone = ff_game.score / 10000;
+            int lastMilestone = ff_game.lastBonusLifeAt / 10000;
+            if (currentMilestone > lastMilestone) {
+                ff_game.lives++;
+                ff_game.lastBonusLifeAt = currentMilestone * 10000;
+                ff_game.lastDisplayedLives = -1;  // Force lives display update
+                
+                // Brief visual feedback
+                tft.fillRect(FF_SCREEN_W/2 - 80, FF_SCREEN_H/2 - 30, 160, 60, FF_COLOR_GREEN);
+                tft.setTextColor(TFT_BLACK, FF_COLOR_GREEN);
+                tft.setTextSize(2);
+                tft.setTextDatum(MC_DATUM);
+                tft.drawString("BONUS LIFE!", FF_SCREEN_W/2, FF_SCREEN_H/2);
+                delay(1000);
+            }
             
             // Update flight controls
             float targetBank = 0;
@@ -857,16 +914,28 @@ ff_drawBullet(tft, sx, sy, scale * 0.7, FF_COLOR_CYAN);                    }
                         }
                     }
                     
-                    float dist = sqrt(dx*dx + dy*dy + dz*dz);
+float dist = sqrt(dx*dx + dy*dy + dz*dz);
                     if (dist < 30) {
                         ff_game.enemies[i].active = false;
                         ff_game.lives--;
+                        
+                        // Clear all threats to prevent multi-death
+                        for (int j = 0; j < FF_MAX_ENEMY_BULLETS; j++) ff_game.enemyBullets[j].active = false;
+                        for (int j = 0; j < FF_MAX_BULLETS; j++) ff_game.bullets[j].active = false;
+                        
                         tft.fillScreen(FF_COLOR_RED);
                         delay(150);
-                        tft.fillScreen(TFT_BLACK);
+                        
+                        // Reset player
+                        ff_flight.altitude = 50;
+                        ff_flight.pitch = 0;
+                        ff_flight.bankAngle = 0;
+                        
                         ff_game.lastDisplayedScore = -1;
                         ff_game.lastDisplayedLives = -1;
-                        continue;
+                        
+                        tft.fillScreen(TFT_BLACK);
+                        break;  // Exit enemy loop immediately
                     }
                     
                     int sx, sy;
@@ -1042,7 +1111,6 @@ ff_drawBullet(tft, sx, sy, scale * 0.7, FF_COLOR_CYAN);                    }
                 ff_game.lastDisplayedScore = ff_game.score;
             }
             
-            static int lastEnemiesRemaining = -1;
             int enemiesRemaining = ff_game.roundTarget - ff_game.targetsDestroyed;
             if (enemiesRemaining != lastEnemiesRemaining) {
                 tft.fillRect(160, 0, 160, 30, TFT_BLACK);
@@ -1063,7 +1131,6 @@ ff_drawBullet(tft, sx, sy, scale * 0.7, FF_COLOR_CYAN);                    }
                 ff_game.lastDisplayedLives = ff_game.lives;
             }
             
-static int lastAltDrawn = -1;
             if (abs((int)ff_flight.altitude - lastAltDrawn) >= 1) {
                 tft.fillRect(FF_SCREEN_W - 35, 35, 35, 215, TFT_BLACK);
                 ff_drawAltitudeIndicator(tft, ff_flight.altitude);
@@ -1118,17 +1185,26 @@ static int lastAltDrawn = -1;
                 tft.fillScreen(TFT_BLACK);
             }
             
-            // Altitude crash
+// Altitude crash
             if (ff_flight.altitude < 1) {
                 ff_game.lives--;
+                
+                // Clear all active objects
+                for (int i = 0; i < FF_MAX_ENEMY_BULLETS; i++) ff_game.enemyBullets[i].active = false;
+                for (int i = 0; i < FF_MAX_BULLETS; i++) ff_game.bullets[i].active = false;
+                
                 tft.fillScreen(FF_COLOR_RED);
                 delay(200);
+                
+                // Reset player position and orientation
                 ff_flight.altitude = 50;
                 ff_flight.pitch = 0;
                 ff_flight.bankAngle = 0;
+                
                 ff_game.lastDisplayedScore = -1;
                 ff_game.lastDisplayedLives = -1;
                 lastAltDrawn = -1;
+                
                 tft.fillScreen(TFT_BLACK);
             }
             
