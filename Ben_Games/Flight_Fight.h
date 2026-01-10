@@ -9,9 +9,11 @@
 #define FF_SCREEN_H 320
 #define FF_MAX_ENEMIES 8
 #define FF_MAX_BULLETS 6
-#define FF_MAX_GROUND 6
+#define FF_MAX_GROUND 3
 #define FF_MAX_LIVES 3
 #define FF_MOUNTAIN_POINTS 30
+#define FF_MAX_ENEMY_BULLETS 10
+#define FF_MAX_MOUNTAIN_PEAKS 5
 
 #define FF_COLOR_CYAN TFT_CYAN
 #define FF_COLOR_WHITE TFT_WHITE
@@ -116,7 +118,6 @@ void ff_drawAltitudeIndicator(TFT_eSPI &tft, float altitude) {
     int numBars = 20;
     int barSpacing = barHeight / numBars;
     
-    // Draw bars from bottom to top using simple vector lines
     for (int i = 0; i < numBars; i++) {
         int y = barY + barHeight - (i * barSpacing) - barSpacing / 2;
         float altLevel = (i * 100.0f) / numBars;
@@ -130,15 +131,37 @@ void ff_drawAltitudeIndicator(TFT_eSPI &tft, float altitude) {
             barColor = FF_COLOR_GREEN;
         }
         
-        // Draw single horizontal line for each segment
         if (altLevel < altitude) {
             tft.drawLine(barX, y, barX + 20, y, barColor);
         }
     }
 }
 
-// ====== DETAILED FEATHERED WINGS ======
+// ====== TURRET MOUNTAIN (VECTOR LINES) ======
+void ff_drawTurretMountain(TFT_eSPI &tft, int turretX, int turretY, int baseY, int heightVariation) {
+    uint16_t mountainColor = 0x5ACB;
+    
+    int peakX = turretX;
+    int peakY = turretY + 10 - heightVariation;
+    int baseWidth = 80 + heightVariation / 2;
+    
+    int leftBaseX = peakX - baseWidth / 2;
+    tft.drawLine(leftBaseX, baseY, peakX, peakY, mountainColor);
+    
+    int rightBaseX = peakX + baseWidth / 2;
+    tft.drawLine(peakX, peakY, rightBaseX, baseY, mountainColor);
+    
+    int midLeftX = peakX - baseWidth / 4;
+    int midRightX = peakX + baseWidth / 4;
+    int midY = peakY + (baseY - peakY) / 2;
+    
+    tft.drawLine(midLeftX, midY, peakX, peakY, mountainColor);
+    tft.drawLine(peakX, peakY, midRightX, midY, mountainColor);
+}
+
+// ====== AVIATOR WINGS (REALISTIC) ======
 void ff_drawFeatheredWings(TFT_eSPI &tft, int cx, int cy, uint16_t color) {
+    // CENTER EMBLEM (stays exactly the same)
     tft.drawRect(cx - 12, cy - 8, 24, 20, color);
     tft.drawLine(cx - 12, cy + 12, cx, cy + 18, color);
     tft.drawLine(cx, cy + 18, cx + 12, cy + 12, color);
@@ -148,6 +171,7 @@ void ff_drawFeatheredWings(TFT_eSPI &tft, int cx, int cy, uint16_t color) {
         tft.drawLine(x, cy - 6, x, cy + 10, color);
     }
     
+    // Anchor top
     int sx = cx, sy = cy - 25;
     tft.drawLine(sx, sy - 10, sx - 3, sy - 3, color);
     tft.drawLine(sx - 3, sy - 3, sx - 10, sy - 2, color);
@@ -160,84 +184,134 @@ void ff_drawFeatheredWings(TFT_eSPI &tft, int cx, int cy, uint16_t color) {
     tft.drawLine(sx + 10, sy - 2, sx + 3, sy - 3, color);
     tft.drawLine(sx + 3, sy - 3, sx, sy - 10, color);
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx - 15 - i * 10;
-        int featherY = cy - 4 + i;
-        tft.drawLine(cx - 15, cy - 4, featherX, featherY, color);
-        tft.drawLine(cx - 15, cy + 4, featherX, featherY + 8, color);
-        tft.drawLine(featherX, featherY, featherX - 3, featherY + 2, color);
-        tft.drawLine(featherX - 3, featherY + 2, featherX - 3, featherY + 6, color);
-        tft.drawLine(featherX - 3, featherY + 6, featherX, featherY + 8, color);
+    // ===== LEFT WING (TALLER) =====
+    int wingStartX = cx - 15;
+    int wingY = cy;
+    
+    // THICK top edge (3 lines for thickness)
+    // Line 1 (main top edge - higher arc)
+    tft.drawLine(wingStartX, wingY - 12, wingStartX - 20, wingY - 18, color);
+    tft.drawLine(wingStartX - 20, wingY - 18, wingStartX - 45, wingY - 22, color);
+    tft.drawLine(wingStartX - 45, wingY - 22, wingStartX - 75, wingY - 20, color);
+    tft.drawLine(wingStartX - 75, wingY - 20, wingStartX - 110, wingY - 15, color);
+    tft.drawLine(wingStartX - 110, wingY - 15, wingStartX - 150, wingY - 8, color);
+    
+    // Line 2 (thickening line)
+    tft.drawLine(wingStartX, wingY - 11, wingStartX - 20, wingY - 17, color);
+    tft.drawLine(wingStartX - 20, wingY - 17, wingStartX - 45, wingY - 21, color);
+    tft.drawLine(wingStartX - 45, wingY - 21, wingStartX - 75, wingY - 19, color);
+    tft.drawLine(wingStartX - 75, wingY - 19, wingStartX - 110, wingY - 14, color);
+    tft.drawLine(wingStartX - 110, wingY - 14, wingStartX - 150, wingY - 7, color);
+    
+    // Line 3 (inner thickness line)
+    tft.drawLine(wingStartX, wingY - 10, wingStartX - 20, wingY - 16, color);
+    tft.drawLine(wingStartX - 20, wingY - 16, wingStartX - 45, wingY - 20, color);
+    tft.drawLine(wingStartX - 45, wingY - 20, wingStartX - 75, wingY - 18, color);
+    tft.drawLine(wingStartX - 75, wingY - 18, wingStartX - 110, wingY - 13, color);
+    tft.drawLine(wingStartX - 110, wingY - 13, wingStartX - 150, wingY - 6, color);
+    
+    // Bottom edge (rounded contour)
+    tft.drawLine(wingStartX, wingY + 12, wingStartX - 25, wingY + 14, color);
+    tft.drawLine(wingStartX - 25, wingY + 14, wingStartX - 55, wingY + 14, color);
+    tft.drawLine(wingStartX - 55, wingY + 14, wingStartX - 90, wingY + 12, color);
+    tft.drawLine(wingStartX - 90, wingY + 12, wingStartX - 125, wingY + 8, color);
+    tft.drawLine(wingStartX - 125, wingY + 8, wingStartX - 150, wingY - 6, color);
+    
+// Feather lines (progressively shorter at wing tips - both top and bottom)
+    for (int i = 0; i < 7; i++) {
+        int featherX = wingStartX - 20 - (i * 20);
+        
+        // Adjust top height - outer feathers have lower tops
+        int topY;
+        if (i < 2) {
+            topY = wingY - 18;
+        } else if (i < 4) {
+            topY = wingY - 22;
+        } else if (i == 4) {
+            topY = wingY - 16;  // First outer - shorter top
+        } else if (i == 5) {
+            topY = wingY - 12;  // Second outer - even shorter top
+        } else {
+            topY = wingY - 8;   // Outermost - shortest top
+        }
+        
+        int bottomY;
+        if (i < 2) {
+            bottomY = wingY + 13;
+        } else if (i < 4) {
+            bottomY = wingY + 13;
+        } else if (i == 4) {
+            bottomY = wingY + 7;
+        } else if (i == 5) {
+            bottomY = wingY + 3;
+        } else {
+            bottomY = wingY - 1;
+        }
+        
+        tft.drawLine(featherX, topY, featherX - 2, bottomY, color);
     }
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx - 45 - i * 12;
-        int featherY = cy - 6 + i * 2;
-        tft.drawLine(cx - 45, cy - 6, featherX, featherY, color);
-        tft.drawLine(cx - 45, cy + 6, featherX, featherY + 12, color);
-        tft.drawLine(featherX, featherY, featherX - 4, featherY + 3, color);
-        tft.drawLine(featherX - 4, featherY + 3, featherX - 4, featherY + 9, color);
-        tft.drawLine(featherX - 4, featherY + 9, featherX, featherY + 12, color);
-    }
+    // ===== RIGHT WING (TALLER, mirror) =====
+    wingStartX = cx + 15;
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx - 93 - i * 14;
-        int featherY = cy - 8 + i * 2;
-        tft.drawLine(cx - 93, cy - 8, featherX, featherY, color);
-        tft.drawLine(cx - 93, cy + 8, featherX, featherY + 16, color);
-        tft.drawLine(featherX, featherY, featherX - 5, featherY + 4, color);
-        tft.drawLine(featherX - 5, featherY + 4, featherX - 5, featherY + 12, color);
-        tft.drawLine(featherX - 5, featherY + 12, featherX, featherY + 16, color);
-    }
+    // THICK top edge (3 lines for thickness)
+    tft.drawLine(wingStartX, wingY - 12, wingStartX + 20, wingY - 18, color);
+    tft.drawLine(wingStartX + 20, wingY - 18, wingStartX + 45, wingY - 22, color);
+    tft.drawLine(wingStartX + 45, wingY - 22, wingStartX + 75, wingY - 20, color);
+    tft.drawLine(wingStartX + 75, wingY - 20, wingStartX + 110, wingY - 15, color);
+    tft.drawLine(wingStartX + 110, wingY - 15, wingStartX + 150, wingY - 8, color);
     
-    for (int i = 0; i < 3; i++) {
-        int featherX = cx - 149 - i * 16;
-        int featherY = cy - 10 + i * 3;
-        tft.drawLine(cx - 149, cy - 10, featherX, featherY, color);
-        tft.drawLine(cx - 149, cy + 10, featherX, featherY + 20, color);
-        tft.drawLine(featherX, featherY, featherX - 6, featherY + 5, color);
-        tft.drawLine(featherX - 6, featherY + 5, featherX - 6, featherY + 15, color);
-        tft.drawLine(featherX - 6, featherY + 15, featherX, featherY + 20, color);
-    }
+    tft.drawLine(wingStartX, wingY - 11, wingStartX + 20, wingY - 17, color);
+    tft.drawLine(wingStartX + 20, wingY - 17, wingStartX + 45, wingY - 21, color);
+    tft.drawLine(wingStartX + 45, wingY - 21, wingStartX + 75, wingY - 19, color);
+    tft.drawLine(wingStartX + 75, wingY - 19, wingStartX + 110, wingY - 14, color);
+    tft.drawLine(wingStartX + 110, wingY - 14, wingStartX + 150, wingY - 7, color);
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx + 15 + i * 10;
-        int featherY = cy - 4 + i;
-        tft.drawLine(cx + 15, cy - 4, featherX, featherY, color);
-        tft.drawLine(cx + 15, cy + 4, featherX, featherY + 8, color);
-        tft.drawLine(featherX, featherY, featherX + 3, featherY + 2, color);
-        tft.drawLine(featherX + 3, featherY + 2, featherX + 3, featherY + 6, color);
-        tft.drawLine(featherX + 3, featherY + 6, featherX, featherY + 8, color);
-    }
+    tft.drawLine(wingStartX, wingY - 10, wingStartX + 20, wingY - 16, color);
+    tft.drawLine(wingStartX + 20, wingY - 16, wingStartX + 45, wingY - 20, color);
+    tft.drawLine(wingStartX + 45, wingY - 20, wingStartX + 75, wingY - 18, color);
+    tft.drawLine(wingStartX + 75, wingY - 18, wingStartX + 110, wingY - 13, color);
+    tft.drawLine(wingStartX + 110, wingY - 13, wingStartX + 150, wingY - 6, color);
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx + 45 + i * 12;
-        int featherY = cy - 6 + i * 2;
-        tft.drawLine(cx + 45, cy - 6, featherX, featherY, color);
-        tft.drawLine(cx + 45, cy + 6, featherX, featherY + 12, color);
-        tft.drawLine(featherX, featherY, featherX + 4, featherY + 3, color);
-        tft.drawLine(featherX + 4, featherY + 3, featherX + 4, featherY + 9, color);
-        tft.drawLine(featherX + 4, featherY + 9, featherX, featherY + 12, color);
-    }
+    // Bottom edge (rounded contour)
+    tft.drawLine(wingStartX, wingY + 12, wingStartX + 25, wingY + 14, color);
+    tft.drawLine(wingStartX + 25, wingY + 14, wingStartX + 55, wingY + 14, color);
+    tft.drawLine(wingStartX + 55, wingY + 14, wingStartX + 90, wingY + 12, color);
+    tft.drawLine(wingStartX + 90, wingY + 12, wingStartX + 125, wingY + 8, color);
+    tft.drawLine(wingStartX + 125, wingY + 8, wingStartX + 150, wingY - 6, color);
     
-    for (int i = 0; i < 4; i++) {
-        int featherX = cx + 93 + i * 14;
-        int featherY = cy - 8 + i * 2;
-        tft.drawLine(cx + 93, cy - 8, featherX, featherY, color);
-        tft.drawLine(cx + 93, cy + 8, featherX, featherY + 16, color);
-        tft.drawLine(featherX, featherY, featherX + 5, featherY + 4, color);
-        tft.drawLine(featherX + 5, featherY + 4, featherX + 5, featherY + 12, color);
-        tft.drawLine(featherX + 5, featherY + 12, featherX, featherY + 16, color);
-    }
-    
-    for (int i = 0; i < 3; i++) {
-        int featherX = cx + 149 + i * 16;
-        int featherY = cy - 10 + i * 3;
-        tft.drawLine(cx + 149, cy - 10, featherX, featherY, color);
-        tft.drawLine(cx + 149, cy + 10, featherX, featherY + 20, color);
-        tft.drawLine(featherX, featherY, featherX + 6, featherY + 5, color);
-        tft.drawLine(featherX + 6, featherY + 5, featherX + 6, featherY + 15, color);
-        tft.drawLine(featherX + 6, featherY + 15, featherX, featherY + 20, color);
+// Feather lines (progressively shorter at wing tips - both top and bottom)
+    for (int i = 0; i < 7; i++) {
+        int featherX = wingStartX + 20 + (i * 20);
+        
+        // Adjust top height - outer feathers have lower tops
+        int topY;
+        if (i < 2) {
+            topY = wingY - 18;
+        } else if (i < 4) {
+            topY = wingY - 22;
+        } else if (i == 4) {
+            topY = wingY - 16;  // First outer - shorter top
+        } else if (i == 5) {
+            topY = wingY - 12;  // Second outer - even shorter top
+        } else {
+            topY = wingY - 8;   // Outermost - shortest top
+        }
+        
+        int bottomY;
+        if (i < 2) {
+            bottomY = wingY + 13;
+        } else if (i < 4) {
+            bottomY = wingY + 13;
+        } else if (i == 4) {
+            bottomY = wingY + 7;
+        } else if (i == 5) {
+            bottomY = wingY + 3;
+        } else {
+            bottomY = wingY - 1;
+        }
+        
+        tft.drawLine(featherX, topY, featherX + 2, bottomY, color);
     }
 }
 
@@ -273,13 +347,16 @@ void ff_initMountains() {
 
 void ff_drawMountains(TFT_eSPI &tft) {
     int horizonY = FF_SCREEN_H / 2 + (int)(ff_flight.pitch * 5);
+    
+    float altitudeScale = 1.0f + ((80.0f - ff_flight.altitude) / 80.0f) * 0.5f;
+    
     float angleRad = ff_flight.bankAngle * 0.01745329;
     
     for (int layer = 0; layer < 3; layer++) {
         uint16_t color = (layer == 0 ? 0x4208 : (layer == 1 ? 0x2104 : 0x1082));
         
         int segWidth = FF_SCREEN_W / (FF_MOUNTAIN_POINTS - 1);
-        int baseY = horizonY + 20 * (3 - layer);
+        int baseY = horizonY + (int)(20 * (3 - layer) * altitudeScale);
         
         for (int i = 0; i < FF_MOUNTAIN_POINTS - 1; i++) {
             int x1 = i * segWidth;
@@ -288,10 +365,9 @@ void ff_drawMountains(TFT_eSPI &tft) {
             int tilt1 = (int)(tan(angleRad) * (x1 - FF_SCREEN_W / 2));
             int tilt2 = (int)(tan(angleRad) * (x2 - FF_SCREEN_W / 2));
             
-            int y1 = baseY + ff_mountains[layer].heights[i] + tilt1;
-            int y2 = baseY + ff_mountains[layer].heights[i + 1] + tilt2;
+            int y1 = baseY + (int)(ff_mountains[layer].heights[i] * altitudeScale) + tilt1;
+            int y2 = baseY + (int)(ff_mountains[layer].heights[i + 1] * altitudeScale) + tilt2;
             
-            // CLIPPING: Only draw if below HUD and left of altitude indicator
             if (y1 < FF_SCREEN_H && y2 < FF_SCREEN_H && 
                 y1 >= FF_HUD_TOP && y2 >= FF_HUD_TOP &&
                 x1 < FF_HUD_RIGHT && x2 < FF_HUD_RIGHT) {
@@ -323,8 +399,13 @@ struct FF_Bullet {
     bool active;
 };
 
-void ff_drawBullet(TFT_eSPI &tft, int screenX, int screenY, float scale, bool erase = false) {
-    uint16_t color = erase ? TFT_BLACK : FF_COLOR_YELLOW;
+struct FF_EnemyBullet {
+    float x, y, z;
+    float vx, vy, vz;
+    bool active;
+};
+
+void ff_drawBullet(TFT_eSPI &tft, int screenX, int screenY, float scale, uint16_t color) {
     int size = (int)(4 * scale);
     if (size < 2) size = 2;
     tft.drawLine(screenX - size, screenY, screenX + size, screenY, color);
@@ -356,23 +437,25 @@ void ff_drawHeli(TFT_eSPI &tft, int x, int y, float scale, bool erase = false) {
     tft.drawLine(x, y, x + s, y + s/2, c);
 }
 
-// ====== GROUND TARGET ======
+// ====== GROUND TARGET (TURRET) ======
 void ff_drawGroundTarget(TFT_eSPI &tft, int x, int y, int type, float scale, bool erase = false) {
     uint16_t c = erase ? TFT_BLACK : FF_COLOR_RED;
-    int s = (int)(scale * 6);
-    if (s < 2) s = 2;
+    int s = (int)(scale * 8);
+    if (s < 3) s = 3;
     
-    if (type == 0) {
-        tft.drawRect(x - s, y - s/2, s * 2, s, c);
-    } else if (type == 1) {
-        tft.drawRect(x - s/2, y - s, s, s * 2, c);
-    } else {
-        tft.drawLine(x, y, x, y - s, c);
-        tft.drawCircle(x, y - s, s/2, c);
-    }
+    // Base
+    tft.drawRect(x - s, y - s/2, s * 2, s, c);
+    tft.drawRect(x - s + 1, y - s/2 + 1, s * 2 - 2, s - 2, c);
+    
+    // Turret box
+    tft.drawRect(x - s/2, y - s - s/2, s, s/2, c);
+    
+    // Gun barrel
+    tft.drawLine(x, y - s - s/2, x, y - s - s, c);
+    tft.drawLine(x, y - s - s, x + s/2, y - s - s, c);
 }
 
-// ====== ENEMY STRUCTURE ======
+// ====== STRUCTURES ======
 struct FF_Enemy {
     float x, y, z;
     float vx, vy, vz;
@@ -387,6 +470,19 @@ struct FF_GroundTarget {
     int type;
     bool active;
     int health;
+    int mountainHeight;
+};
+
+struct FF_Mountain_Peak {
+    float x, z;
+    int height;
+    bool active;
+};
+
+struct FF_TurretMountain {
+    float x, z;
+    int height;
+    bool exists;  // Set once, never cleared
 };
 
 // ====== GAME STATE ======
@@ -398,6 +494,9 @@ struct FF_GameState {
     FF_Bullet bullets[FF_MAX_BULLETS];
     FF_Enemy enemies[FF_MAX_ENEMIES];
     FF_GroundTarget groundTargets[FF_MAX_GROUND];
+    FF_EnemyBullet enemyBullets[FF_MAX_ENEMY_BULLETS];
+    FF_Mountain_Peak mountainPeaks[FF_MAX_MOUNTAIN_PEAKS];
+    FF_TurretMountain turretMountains[FF_MAX_GROUND];  // ADD THIS
     
     bool isGroundRound;
     int targetsDestroyed;
@@ -433,8 +532,24 @@ void ff_initGame() {
     for (int i = 0; i < FF_MAX_BULLETS; i++) ff_game.bullets[i].active = false;
     for (int i = 0; i < FF_MAX_ENEMIES; i++) ff_game.enemies[i].active = false;
     for (int i = 0; i < FF_MAX_GROUND; i++) ff_game.groundTargets[i].active = false;
+    for (int i = 0; i < FF_MAX_ENEMY_BULLETS; i++) ff_game.enemyBullets[i].active = false;
+    for (int i = 0; i < FF_MAX_MOUNTAIN_PEAKS; i++) ff_game.mountainPeaks[i].active = false;
+    for (int i = 0; i < FF_MAX_GROUND; i++) ff_game.turretMountains[i].exists = false;
     
     ff_initMountains();
+}
+
+// ====== SPAWN MOUNTAIN PEAK ======
+void ff_spawnMountainPeak() {
+    for (int i = 0; i < FF_MAX_MOUNTAIN_PEAKS; i++) {
+        if (!ff_game.mountainPeaks[i].active) {
+            ff_game.mountainPeaks[i].active = true;
+            ff_game.mountainPeaks[i].x = ff_flight.playerX + random(-80, 80);
+            ff_game.mountainPeaks[i].z = ff_flight.playerZ + 200 + random(0, 100);
+            ff_game.mountainPeaks[i].height = random(0, 60);
+            break;
+        }
+    }
 }
 
 // ====== SPAWN ENEMY ======
@@ -444,30 +559,13 @@ void ff_spawnEnemy() {
             ff_game.enemies[i].active = true;
             ff_game.enemies[i].spawnTime = millis();
             
-            // Spawn ahead of player in absolute world space
-            ff_game.enemies[i].z = ff_flight.playerZ + 400 + random(0, 100);
-            ff_game.enemies[i].x = ff_flight.playerX + random(-150, 150);
-            ff_game.enemies[i].y = 25 + random(-10, 10);
+            ff_game.enemies[i].z = ff_flight.playerZ + 250 + random(0, 100);
+            ff_game.enemies[i].x = ff_flight.playerX + random(-30, 30);
+            ff_game.enemies[i].y = ff_flight.playerY + random(-15, 15);
             
-            // Independent movement patterns
-            int pattern = random(0, 3);
-            switch(pattern) {
-                case 0:  // Straight flyer
-                    ff_game.enemies[i].vx = random(-5, 5) * 0.1f;
-                    ff_game.enemies[i].vy = 0;
-                    ff_game.enemies[i].vz = -2.5f - ff_game.round * 0.2f;
-                    break;
-                case 1:  // Weaving
-ff_game.enemies[i].vx = random(10, 25) * 0.1f * (random(0,2) ? 1 : -1);
-                    ff_game.enemies[i].vy = random(-5, 5) * 0.1f;
-                    ff_game.enemies[i].vz = -2.0f - ff_game.round * 0.2f;
-                    break;
-                case 2:  // Diving/climbing
-                    ff_game.enemies[i].vx = random(-8, 8) * 0.1f;
-                    ff_game.enemies[i].vy = random(-15, 15) * 0.1f;
-                    ff_game.enemies[i].vz = -2.2f - ff_game.round * 0.2f;
-                    break;
-            }
+            ff_game.enemies[i].vx = random(-2, 2) * 0.1f;
+            ff_game.enemies[i].vy = random(-2, 2) * 0.1f;
+            ff_game.enemies[i].vz = 0;
             
             ff_game.enemies[i].type = (ff_game.isGroundRound && random(0, 2) == 0) ? 1 : 0;
             ff_game.enemies[i].health = (ff_game.enemies[i].type == 1) ? 3 : 1;
@@ -478,13 +576,22 @@ ff_game.enemies[i].vx = random(10, 25) * 0.1f * (random(0,2) ? 1 : -1);
 
 // ====== SPAWN GROUND TARGET ======
 void ff_spawnGroundTarget() {
+    ff_spawnMountainPeak();
+    
     for (int i = 0; i < FF_MAX_GROUND; i++) {
         if (!ff_game.groundTargets[i].active) {
             ff_game.groundTargets[i].active = true;
-            ff_game.groundTargets[i].x = random(-100, 100);
-            ff_game.groundTargets[i].z = 250 + random(0, 100);
+            ff_game.groundTargets[i].x = ff_flight.playerX + random(-80, 80);
+            ff_game.groundTargets[i].z = ff_flight.playerZ + 200 + random(0, 100);
             ff_game.groundTargets[i].type = random(0, 3);
             ff_game.groundTargets[i].health = 2;
+            ff_game.groundTargets[i].mountainHeight = random(0, 60);
+            
+            // RECORD MOUNTAIN POSITION PERMANENTLY
+            ff_game.turretMountains[i].x = ff_game.groundTargets[i].x;
+            ff_game.turretMountains[i].z = ff_game.groundTargets[i].z;
+            ff_game.turretMountains[i].height = ff_game.groundTargets[i].mountainHeight;
+            ff_game.turretMountains[i].exists = true;
             break;
         }
     }
@@ -499,8 +606,8 @@ void ff_worldToScreen(float worldX, float worldY, float worldZ, int &screenX, in
     if (relativeZ <= 5) relativeZ = 5;
     scale = 100.0f / relativeZ;
     
-    screenX = FF_SCREEN_W / 2 + (int)(relativeX * scale);
-    screenY = FF_SCREEN_H / 2 + (int)(relativeY * scale);
+    screenX = FF_SCREEN_W / 2 - (int)(relativeX * scale);
+    screenY = FF_SCREEN_H / 2 - (int)(relativeY * scale);
 }
 
 // ====== SPLASH ======
@@ -541,7 +648,6 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
         unsigned long lastFrame = millis();
         bool gameOver = false;
         
-        // Initial full screen clear and HUD draw
         tft.fillScreen(TFT_BLACK);
         
         while (!gameOver && ff_game.lives > 0) {
@@ -562,11 +668,8 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
             int joyX = ss.analogRead(3);
             int joyY = ss.analogRead(2);
             
-// Clear game area only (not HUD areas)
             tft.fillRect(0, FF_HUD_TOP, FF_HUD_RIGHT, FF_SCREEN_H - FF_HUD_TOP, TFT_BLACK);
-            
-            // Clear protective border strips to catch any stray pixels
-            tft.fillRect(0, 18, FF_SCREEN_W, 12, TFT_BLACK);  // Horizontal strip below HUD text
+            tft.fillRect(0, 18, FF_SCREEN_W, 12, TFT_BLACK);
             
             // Update flight controls
             float targetBank = 0;
@@ -579,19 +682,33 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
             else if (joyY > 624) targetPitch = -30;
             
             ff_flight.bankAngle += (targetBank - ff_flight.bankAngle) * 0.15f;
-            ff_flight.pitch += (targetPitch - ff_flight.pitch) * 0.1f;
             
-            // Update altitude with limits: 0 (ground) to 80 (ceiling)
+            float pitchResponse = 0.1f;
+            if (ff_flight.altitude < 10) {
+                if (targetPitch == 0) {
+                    ff_flight.pitch = 0;
+                } else {
+                    ff_flight.pitch += (targetPitch - ff_flight.pitch) * 0.08f;
+                }
+            } else if (ff_flight.altitude < 20) {
+                pitchResponse = 0.12f;
+                if (targetPitch == 0 && ff_flight.pitch < 0) {
+                    ff_flight.pitch += 0.5f;
+                } else {
+                    ff_flight.pitch += (targetPitch - ff_flight.pitch) * pitchResponse;
+                }
+            } else {
+                ff_flight.pitch += (targetPitch - ff_flight.pitch) * pitchResponse;
+            }
+            
             ff_flight.altitude += ff_flight.pitch * 0.08f;
             if (ff_flight.altitude < 0) ff_flight.altitude = 0;
             if (ff_flight.altitude > 80) ff_flight.altitude = 80;
             
-            // Update player position
-            ff_flight.playerX += ff_flight.bankAngle * 0.5f;
-            ff_flight.playerY += ff_flight.pitch * 0.4f;
+            ff_flight.playerX += ff_flight.bankAngle * 0.8f;
+            ff_flight.playerY += ff_flight.pitch * 0.6f;
             ff_flight.playerZ += 3.0f;
             
-            // Draw mountains
             ff_drawMountains(tft);
             ff_scrollMountains(0.5f);
             
@@ -605,8 +722,8 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                         ff_game.bullets[i].x = ff_flight.playerX;
                         ff_game.bullets[i].y = ff_flight.playerY;
                         ff_game.bullets[i].z = ff_flight.playerZ + 10;
-                        ff_game.bullets[i].vx = 0;
-                        ff_game.bullets[i].vy = 0;
+                        ff_game.bullets[i].vx = ff_flight.bankAngle * 0.8f;
+                        ff_game.bullets[i].vy = ff_flight.pitch * 0.6f;
                         ff_game.bullets[i].vz = 15.0f;
                         break;
                     }
@@ -614,7 +731,7 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
             }
             prevBtnA = btnA;
             
-// Update bullets
+            // Update bullets
             for (int i = 0; i < FF_MAX_BULLETS; i++) {
                 if (ff_game.bullets[i].active) {
                     ff_game.bullets[i].x += ff_game.bullets[i].vx;
@@ -629,10 +746,51 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                     int sx, sy;
                     float scale;
                     ff_worldToScreen(ff_game.bullets[i].x, ff_game.bullets[i].y, ff_game.bullets[i].z, sx, sy, scale);
-                    // CLIPPING: Only draw if in game area (not in HUD zones)
-                    if (sx >= 0 && sx < FF_HUD_RIGHT && sy >= FF_HUD_TOP && sy < FF_SCREEN_H) {
-                        ff_drawBullet(tft, sx, sy, scale, false);
+if (sx >= 0 && sx < FF_HUD_RIGHT && sy >= FF_HUD_TOP && sy < FF_SCREEN_H) {
+                        ff_drawBullet(tft, sx, sy, scale, FF_COLOR_YELLOW);
                     }
+                }
+            }
+            
+// Update enemy bullets
+            for (int i = 0; i < FF_MAX_ENEMY_BULLETS; i++) {
+                if (ff_game.enemyBullets[i].active) {
+                    ff_game.enemyBullets[i].x += ff_game.enemyBullets[i].vx;
+                    ff_game.enemyBullets[i].y += ff_game.enemyBullets[i].vy;
+                    ff_game.enemyBullets[i].z += ff_game.enemyBullets[i].vz;
+                    
+                    float dx = ff_flight.playerX - ff_game.enemyBullets[i].x;
+                    float dy = ff_flight.playerY - ff_game.enemyBullets[i].y;
+                    float dz = ff_flight.playerZ - ff_game.enemyBullets[i].z;
+                    float dist = sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (dist < 20) {
+                        ff_game.lives--;
+                        
+                        // CLEAR ALL ENEMY BULLETS to prevent multi-hit
+                        for (int j = 0; j < FF_MAX_ENEMY_BULLETS; j++) {
+                            ff_game.enemyBullets[j].active = false;
+                        }
+                        
+                        tft.fillScreen(FF_COLOR_RED);
+                        delay(150);
+                        tft.fillScreen(TFT_BLACK);
+                        ff_game.lastDisplayedScore = -1;
+                        ff_game.lastDisplayedLives = -1;
+                        break;  // Exit loop since all bullets cleared
+                    }
+                    
+                    if (ff_game.enemyBullets[i].z < ff_flight.playerZ - 200 || 
+                        ff_game.enemyBullets[i].z > ff_flight.playerZ + 200) {
+                        ff_game.enemyBullets[i].active = false;
+                        continue;
+                    }
+                    
+                    int sx, sy;
+                    float scale;
+                    ff_worldToScreen(ff_game.enemyBullets[i].x, ff_game.enemyBullets[i].y, ff_game.enemyBullets[i].z, sx, sy, scale);
+                    if (sx >= 0 && sx < FF_HUD_RIGHT && sy >= FF_HUD_TOP && sy < FF_SCREEN_H) {
+ff_drawBullet(tft, sx, sy, scale * 0.7, FF_COLOR_CYAN);                    }
                 }
             }
             
@@ -650,32 +808,56 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                 ff_game.lastSpawn = now;
             }
             
-// Update enemies
+            // Update enemies
             for (int i = 0; i < FF_MAX_ENEMIES; i++) {
                 if (ff_game.enemies[i].active) {
+                    float dx = ff_flight.playerX - ff_game.enemies[i].x;
+                    float dy = ff_flight.playerY - ff_game.enemies[i].y;
+                    float dz = ff_flight.playerZ - ff_game.enemies[i].z;
+                    
+                    float enemySpeed = 0.5f;
+                    float dist3d = sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (dist3d > 10) {
+                        ff_game.enemies[i].vx = (dx / dist3d) * enemySpeed;
+                        ff_game.enemies[i].vy = (dy / dist3d) * enemySpeed;
+                        ff_game.enemies[i].vz = (dz / dist3d) * enemySpeed * 0.3f;
+                    }
+                    
                     ff_game.enemies[i].x += ff_game.enemies[i].vx;
                     ff_game.enemies[i].y += ff_game.enemies[i].vy;
                     ff_game.enemies[i].z += ff_game.enemies[i].vz;
                     
-                    unsigned long enemyAge = now - ff_game.enemies[i].spawnTime;
-                    if (enemyAge % 2000 < 50) {
-                        ff_game.enemies[i].vx += random(-5, 5) * 0.05f;
-                        ff_game.enemies[i].vy += random(-3, 3) * 0.05f;
-                    }
+                    if (ff_game.enemies[i].y < 10) ff_game.enemies[i].y = 10;
+                    if (ff_game.enemies[i].y > 50) ff_game.enemies[i].y = 50;
                     
-                    if (ff_game.enemies[i].y < 10) ff_game.enemies[i].vy = abs(ff_game.enemies[i].vy);
-                    if (ff_game.enemies[i].y > 50) ff_game.enemies[i].vy = -abs(ff_game.enemies[i].vy);
-                    
-                    if (ff_game.enemies[i].z < ff_flight.playerZ - 100) {
+                    if (ff_game.enemies[i].z < ff_flight.playerZ - 150) {
                         ff_game.enemies[i].active = false;
                         continue;
                     }
                     
-                    float dx = ff_flight.playerX - ff_game.enemies[i].x;
-                    float dy = ff_flight.playerY - ff_game.enemies[i].y;
-                    float dz = ff_flight.playerZ - ff_game.enemies[i].z;
-                    float dist = sqrt(dx*dx + dy*dy + dz*dz);
+// ENEMY SHOOTING (Round 3+)
+                    if (ff_game.round >= 3 && !ff_game.isGroundRound) {
+                        unsigned long enemyAge = now - ff_game.enemies[i].spawnTime;
+                        if (enemyAge % 4000 > 3900) {  // Shoot every 4 seconds instead of 2
+                            for (int b = 0; b < FF_MAX_ENEMY_BULLETS; b++) {
+                                if (!ff_game.enemyBullets[b].active) {
+                                    ff_game.enemyBullets[b].active = true;
+                                    ff_game.enemyBullets[b].x = ff_game.enemies[i].x;
+                                    ff_game.enemyBullets[b].y = ff_game.enemies[i].y;
+                                    ff_game.enemyBullets[b].z = ff_game.enemies[i].z;
+                                    
+                                    float shootDist = sqrt(dx*dx + dy*dy + dz*dz);
+                                    ff_game.enemyBullets[b].vx = (dx / shootDist) * 5.0f;
+                                    ff_game.enemyBullets[b].vy = (dy / shootDist) * 5.0f;
+                                    ff_game.enemyBullets[b].vz = (dz / shootDist) * 5.0f;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     
+                    float dist = sqrt(dx*dx + dy*dy + dz*dz);
                     if (dist < 30) {
                         ff_game.enemies[i].active = false;
                         ff_game.lives--;
@@ -690,8 +872,9 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                     int sx, sy;
                     float scale;
                     ff_worldToScreen(ff_game.enemies[i].x, ff_game.enemies[i].y, ff_game.enemies[i].z, sx, sy, scale);
-                    // CLIPPING: Only draw if in game area (not in HUD zones)
-                    if (sx >= -50 && sx < FF_HUD_RIGHT && sy >= FF_HUD_TOP && sy < FF_SCREEN_H + 50) {
+                    int margin = (int)(scale * 25);
+                    if (sx >= margin && sx < FF_HUD_RIGHT - margin && 
+                        sy >= FF_HUD_TOP + margin && sy < FF_SCREEN_H - margin) {
                         if (ff_game.enemies[i].type == 0) {
                             ff_drawJet(tft, sx, sy, scale, FF_COLOR_RED, false);
                         } else {
@@ -699,14 +882,41 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                         }
                     }
                 }
+}  // <-- This closes the mountain peaks for loop
+            
+            // Draw turret mountains (persist even after turret destroyed)
+            for (int i = 0; i < FF_MAX_GROUND; i++) {
+                if (ff_game.turretMountains[i].exists) {
+                    if (ff_game.turretMountains[i].z < ff_flight.playerZ - 100) {
+                        ff_game.turretMountains[i].exists = false;
+                        continue;
+                    }
+                    
+                    int sx, sy;
+                    float scale;
+                    ff_worldToScreen(ff_game.turretMountains[i].x, 0, ff_game.turretMountains[i].z, sx, sy, scale);
+                    
+                    int horizonY = FF_SCREEN_H / 2 + (int)(ff_flight.pitch * 5);
+                    float angleRad = ff_flight.bankAngle * 0.01745329;
+                    int tilt = (int)(tan(angleRad) * (sx - FF_SCREEN_W / 2));
+                    
+                    float altitudeScale = 1.0f + ((80.0f - ff_flight.altitude) / 80.0f) * 0.5f;
+                    int peakY = horizonY + (int)(40 * altitudeScale) + tilt - ff_game.turretMountains[i].height;
+                    int baseY = horizonY + (int)(120 * altitudeScale) + tilt;
+                    
+                    int margin = (int)(scale * 10);
+                    if (sx >= margin && sx < FF_HUD_RIGHT - margin && 
+                        peakY >= FF_HUD_TOP + margin && peakY < FF_SCREEN_H - margin) {
+                        ff_drawTurretMountain(tft, sx, peakY, baseY, ff_game.turretMountains[i].height);
+                    }
+                }
             }
             
-// Update ground targets
+// Update ground targets (turrets only, mountains drawn above)
+            static unsigned long lastTurretShot[FF_MAX_GROUND] = {0};
             for (int i = 0; i < FF_MAX_GROUND; i++) {
                 if (ff_game.groundTargets[i].active) {
-                    ff_game.groundTargets[i].z -= 1.5f;
-                    
-                    if (ff_game.groundTargets[i].z < 40) {
+                    if (ff_game.groundTargets[i].z < ff_flight.playerZ - 100) {
                         ff_game.groundTargets[i].active = false;
                         continue;
                     }
@@ -718,10 +928,40 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                     int horizonY = FF_SCREEN_H / 2 + (int)(ff_flight.pitch * 5);
                     float angleRad = ff_flight.bankAngle * 0.01745329;
                     int tilt = (int)(tan(angleRad) * (sx - FF_SCREEN_W / 2));
-                    sy = horizonY + 60 + tilt;
                     
-                    // CLIPPING: Only draw if in game area (not in HUD zones)
-                    if (sx >= -50 && sx < FF_HUD_RIGHT && sy >= FF_HUD_TOP && sy < FF_SCREEN_H) {
+                    float altitudeScale = 1.0f + ((80.0f - ff_flight.altitude) / 80.0f) * 0.5f;
+                    int peakY = horizonY + (int)(40 * altitudeScale) + tilt - ff_game.groundTargets[i].mountainHeight;
+                    
+                    sy = peakY;  // Turret sits at peak
+                    
+                    // TURRET SHOOTING (Round 4+)
+                    if (ff_game.round >= 4 && ff_game.isGroundRound) {
+                if (now - lastTurretShot[i] > 4500) {  // Shoot every 4.5 seconds instead of 2.5
+                            lastTurretShot[i] = now;
+                            for (int b = 0; b < FF_MAX_ENEMY_BULLETS; b++) {
+                                if (!ff_game.enemyBullets[b].active) {
+                                    ff_game.enemyBullets[b].active = true;
+                                    ff_game.enemyBullets[b].x = ff_game.groundTargets[i].x;
+                                    ff_game.enemyBullets[b].y = 0;
+                                    ff_game.enemyBullets[b].z = ff_game.groundTargets[i].z;
+                                    
+                                    float dx = ff_flight.playerX - ff_game.groundTargets[i].x;
+                                    float dy = ff_flight.playerY;
+                                    float dz = ff_flight.playerZ - ff_game.groundTargets[i].z;
+                                    float shootDist = sqrt(dx*dx + dy*dy + dz*dz);
+                                    ff_game.enemyBullets[b].vx = (dx / shootDist) * 4.0f;
+                                    ff_game.enemyBullets[b].vy = (dy / shootDist) * 4.0f;
+                                    ff_game.enemyBullets[b].vz = (dz / shootDist) * 4.0f;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // ONLY DRAW TURRET (mountain drawn separately above)
+                    int margin = (int)(scale * 10);
+                    if (sx >= margin && sx < FF_HUD_RIGHT - margin && 
+                        sy >= FF_HUD_TOP + margin && sy < FF_SCREEN_H - margin) {
                         ff_drawGroundTarget(tft, sx, sy, ff_game.groundTargets[i].type, scale, false);
                     }
                 }
@@ -793,7 +1033,7 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                 }
             }
             
-// Draw HUD only when values change
+            // Draw HUD
             if (ff_game.score != ff_game.lastDisplayedScore) {
                 tft.fillRect(0, 0, 150, 30, TFT_BLACK);
                 char buf[32];
@@ -802,23 +1042,28 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss) {
                 ff_game.lastDisplayedScore = ff_game.score;
             }
             
-            // VALUE 100 - draw once at start
-            static bool valueDrawn = false;
-            if (!valueDrawn) {
-                ff_drawVecText(tft, "VALUE 100", 200, 5, 1, FF_COLOR_CYAN);
-                valueDrawn = true;
+            static int lastEnemiesRemaining = -1;
+            int enemiesRemaining = ff_game.roundTarget - ff_game.targetsDestroyed;
+            if (enemiesRemaining != lastEnemiesRemaining) {
+                tft.fillRect(160, 0, 160, 30, TFT_BLACK);
+                char buf[16];
+                sprintf(buf, "ENEMIES %d", enemiesRemaining);
+                int textWidth = ff_getTextWidth(buf, 1);
+                int centerX = (FF_SCREEN_W - textWidth) / 2;
+                ff_drawVecText(tft, buf, centerX, 5, 1, FF_COLOR_YELLOW);
+                lastEnemiesRemaining = enemiesRemaining;
             }
             
-if (ff_game.lives != ff_game.lastDisplayedLives) {
-                tft.fillRect(FF_SCREEN_W - 120, 0, 120, 30, TFT_BLACK);
+            if (ff_game.lives != ff_game.lastDisplayedLives) {
+                tft.fillRect(FF_SCREEN_W - 90, 0, 90, 30, TFT_BLACK);
                 char buf[32];
                 sprintf(buf, "LIVES %d", ff_game.lives);
-                ff_drawVecText(tft, buf, 370, 5, 1, FF_COLOR_CYAN);
+                int textWidth = ff_getTextWidth(buf, 1);
+                ff_drawVecText(tft, buf, FF_SCREEN_W - textWidth - 10, 5, 1, FF_COLOR_CYAN);
                 ff_game.lastDisplayedLives = ff_game.lives;
             }
             
-            // Draw altitude indicator only when altitude changes
-            static int lastAltDrawn = -1;
+static int lastAltDrawn = -1;
             if (abs((int)ff_flight.altitude - lastAltDrawn) >= 1) {
                 tft.fillRect(FF_SCREEN_W - 35, 35, 35, 215, TFT_BLACK);
                 ff_drawAltitudeIndicator(tft, ff_flight.altitude);
@@ -826,18 +1071,8 @@ if (ff_game.lives != ff_game.lastDisplayedLives) {
             }
             
             // Altitude warnings
-            if (ff_flight.altitude < 10 && ff_flight.altitude >= 3) {
-                if ((millis() / 300) % 2 == 0) {
-                    tft.fillRect(FF_SCREEN_W/2 - 60, FF_SCREEN_H - 25, 120, 20, FF_COLOR_YELLOW);
-                    tft.setTextColor(TFT_BLACK, FF_COLOR_YELLOW);
-                    tft.setTextSize(2);
-                    tft.setTextDatum(MC_DATUM);
-                    tft.drawString("PULL UP!", FF_SCREEN_W/2, FF_SCREEN_H - 15);
-                } else {
-                    tft.fillRect(FF_SCREEN_W/2 - 60, FF_SCREEN_H - 25, 120, 20, TFT_BLACK);
-                }
-            } else if (ff_flight.altitude < 3) {
-                if ((millis() / 200) % 2 == 0) {
+            if (ff_flight.altitude < 10) {
+                if ((millis() / 250) % 2 == 0) {
                     tft.fillRect(FF_SCREEN_W/2 - 60, FF_SCREEN_H - 25, 120, 20, FF_COLOR_RED);
                     tft.setTextColor(TFT_WHITE, FF_COLOR_RED);
                     tft.setTextSize(2);
@@ -847,24 +1082,15 @@ if (ff_game.lives != ff_game.lastDisplayedLives) {
                     tft.fillRect(FF_SCREEN_W/2 - 60, FF_SCREEN_H - 25, 120, 20, TFT_BLACK);
                 }
             }
-/*            
-            // Ceiling warning
-            if (ff_flight.altitude > 75) {
-                if ((millis() / 300) % 2 == 0) {
-                    tft.fillRect(FF_SCREEN_W/2 - 70, 25, 140, 20, FF_COLOR_YELLOW);
-                    tft.setTextColor(TFT_BLACK, FF_COLOR_YELLOW);
-                    tft.setTextSize(2);
-                    tft.setTextDatum(MC_DATUM);
-                    tft.drawString("MAX ALTITUDE!", FF_SCREEN_W/2, 35);
-                } else {
-                    tft.fillRect(FF_SCREEN_W/2 - 70, 25, 140, 20, TFT_BLACK);
-                }
-            }
-*/            
-            // Round completion
+            
+// Round completion
             if (ff_game.targetsDestroyed >= ff_game.roundTarget) {
                 tft.fillScreen(TFT_BLACK);
-                ff_drawVecText(tft, "ROUND COMPLETE", 120, 140, 2, FF_COLOR_GREEN);
+                
+                // Center "ROUND COMPLETE"
+                int textWidth = ff_getTextWidth("ROUND COMPLETE", 2);
+                int centerX = (FF_SCREEN_W - textWidth) / 2;
+                ff_drawVecText(tft, "ROUND COMPLETE", centerX, 140, 2, FF_COLOR_GREEN);
                 delay(2000);
                 
                 ff_game.round++;
@@ -876,17 +1102,17 @@ if (ff_game.lives != ff_game.lastDisplayedLives) {
                 for (int i = 0; i < FF_MAX_GROUND; i++) ff_game.groundTargets[i].active = false;
                 for (int i = 0; i < FF_MAX_BULLETS; i++) ff_game.bullets[i].active = false;
                 
-                ff_game.lastDisplayedScore = -1;
-                ff_game.lastDisplayedLives = -1;
-                lastAltDrawn = -1;
-                valueDrawn = false;
-                
                 tft.fillScreen(TFT_BLACK);
                 
+                // Center round type text
                 if (ff_game.isGroundRound) {
-                    ff_drawVecText(tft, "GROUND ATTACK", 100, 140, 2, FF_COLOR_RED);
+                    textWidth = ff_getTextWidth("GROUND ATTACK", 2);
+                    centerX = (FF_SCREEN_W - textWidth) / 2;
+                    ff_drawVecText(tft, "GROUND ATTACK", centerX, 140, 2, FF_COLOR_RED);
                 } else {
-                    ff_drawVecText(tft, "AIR COMBAT", 130, 140, 2, FF_COLOR_CYAN);
+                    textWidth = ff_getTextWidth("AIR COMBAT", 2);
+                    centerX = (FF_SCREEN_W - textWidth) / 2;
+                    ff_drawVecText(tft, "AIR COMBAT", centerX, 140, 2, FF_COLOR_CYAN);
                 }
                 delay(2000);
                 tft.fillScreen(TFT_BLACK);
