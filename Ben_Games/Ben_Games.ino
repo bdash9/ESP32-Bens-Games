@@ -47,6 +47,9 @@ void run_GordosBigAdventure(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_SpookyMaze(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_AsciiStarWars_SD(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss);
+void run_Psycho_Flight(TFT_eSPI &tft, Adafruit_seesaw &ss);
+void run_Flappy_Cave(TFT_eSPI &tft, Adafruit_seesaw &ss);
+
 
 // ------------ Menu Items ---------------
 const char* game_titles[] = {
@@ -61,7 +64,9 @@ const char* game_titles[] = {
     "Gordo's Big Adventure",
     "Spooky Maze",
     "Ascii Star Wars (17 min)",
-    "Flight Fight"
+    "Flight Fight",
+    "Psycho Flight",
+    "Flappy Cave"  
 };
 enum {
     GORDOKONG_INDEX = 0,
@@ -76,6 +81,8 @@ enum {
     SPOOKY_MAZE_INDEX,
     ASCII_STARWARS_SD_INDEX,
     FLIGHT_FIGHT_INDEX,
+    PSYCHO_FLIGHT_INDEX,
+    FLAPPY_CAVE_INDEX,
     NUM_GAMES
 };
 int selected_game = 0;
@@ -244,6 +251,10 @@ void loop() {
                 run_AsciiStarWars_SD(tft, ss); break;
             case FLIGHT_FIGHT_INDEX:
                 run_FlightFight(tft, ss); break;
+            case PSYCHO_FLIGHT_INDEX:
+                run_Psycho_Flight(tft, ss); break;
+            case FLAPPY_CAVE_INDEX:
+                run_Flappy_Cave(tft, ss); break;
         }
         drawMenu(selected_game);
     }
@@ -263,3 +274,5 @@ void loop() {
 #include "Spooky_Maze.h"
 #include "Ascii_StarWars_SD.h"
 #include "Flight_Fight.h"
+#include "Psycho_Flight.h"
+#include "Flappy_Cave.h"
