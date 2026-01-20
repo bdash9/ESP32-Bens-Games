@@ -49,6 +49,7 @@ void run_AsciiStarWars_SD(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_Psycho_Flight(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_Flappy_Cave(TFT_eSPI &tft, Adafruit_seesaw &ss);
+void run_Rip_Off(TFT_eSPI &tft, Adafruit_seesaw &ss); 
 
 
 // ------------ Menu Items ---------------
@@ -66,7 +67,8 @@ const char* game_titles[] = {
     "Ascii Star Wars (17 min)",
     "Flight Fight",
     "Psycho Flight",
-    "Flappy Cave"  
+    "Flappy Cave",
+    "Rip Off"   
 };
 enum {
     GORDOKONG_INDEX = 0,
@@ -83,6 +85,7 @@ enum {
     FLIGHT_FIGHT_INDEX,
     PSYCHO_FLIGHT_INDEX,
     FLAPPY_CAVE_INDEX,
+    RIP_OFF_INDEX,
     NUM_GAMES
 };
 int selected_game = 0;
@@ -255,6 +258,8 @@ void loop() {
                 run_Psycho_Flight(tft, ss); break;
             case FLAPPY_CAVE_INDEX:
                 run_Flappy_Cave(tft, ss); break;
+            case RIP_OFF_INDEX:
+                run_Rip_Off(tft, ss); break;
         }
         drawMenu(selected_game);
     }
@@ -276,3 +281,4 @@ void loop() {
 #include "Flight_Fight.h"
 #include "Psycho_Flight.h"
 #include "Flappy_Cave.h"
+#include "Rip_Off.h"
