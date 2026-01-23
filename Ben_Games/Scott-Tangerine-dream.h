@@ -161,21 +161,32 @@ struct TangerinePlayer { float x, y, angle; };
 
 #define MAX_ENEMIES 32
 
-// All function declarations up top so it works as header
+// All function declarations - now use TFT_eSprite
 inline bool isWall(int mx, int my, char* world);
-void drawTangerine(TFT_eSPI &tft, int x, int y, int r);
-void drawCD(TFT_eSPI &tft, float depth, int sx, const char* cdLabel);
-void drawEnemy(TFT_eSPI &tft, float depth, int sx);
-void drawShotRay(TFT_eSPI &tft, float len);
-void splashScreen(TFT_eSPI &tft, Adafruit_seesaw &ss, TangerinePlayer &player, int &cur_album, char* world, TangerineSprite* enemies, int &num_enemies, int &cd_collected, int &player_lives);
+void drawTangerine(TFT_eSprite *sprite, int x, int y, int r);
+void drawCD(TFT_eSprite *sprite, float depth, int sx, const char* cdLabel);
+void drawEnemy(TFT_eSprite *sprite, float depth, int sx);
+void drawShotRay(TFT_eSprite *sprite, float len);
+void splashScreen(TFT_eSPI &tft, TFT_eSprite *sprite, Adafruit_seesaw &ss, TangerinePlayer &player, int &cur_album, char* world, TangerineSprite* enemies, int &num_enemies, int &cd_collected, int &player_lives);
 void loadLevel(int which, TangerinePlayer &player, char* world, TangerineSprite* enemies, int &num_enemies, int &cd_collected, int &player_lives);
-void raycastDrawDirect(TFT_eSPI &tft, TangerinePlayer &player, int cur_album, char* world, TangerineSprite* enemies, int num_enemies, int player_lives, int shotShow, float shotLen);
-void fireAtEnemies(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enemies, int num_enemies, int *outShot, float *outLen, char* world);
-void checkCDPickup(TFT_eSPI &tft, TangerinePlayer &player, char* world, int &cd_collected, int cur_album);
-void checkEnemyTouch(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enemies, int &num_enemies, int &player_lives, int &cur_album, char* world, Adafruit_seesaw &ss, int &cd_collected, bool &restart, bool &exitMenu);
+void raycastDrawDirect(TFT_eSprite *sprite, TangerinePlayer &player, int cur_album, char* world, TangerineSprite* enemies, int num_enemies, int player_lives, int shotShow, float shotLen);
+void fireAtEnemies(TFT_eSprite *sprite, TangerinePlayer &player, TangerineSprite* enemies, int num_enemies, int *outShot, float *outLen, char* world);
+void checkCDPickup(TFT_eSPI &tft, TFT_eSprite *sprite, TangerinePlayer &player, char* world, int &cd_collected, int cur_album);
+void checkEnemyTouch(TFT_eSPI &tft, TFT_eSprite *sprite, Adafruit_seesaw &ss, TangerinePlayer &player, TangerineSprite* enemies, int &num_enemies, int &player_lives, int &cur_album, char* world, int &cd_collected, bool &restart, bool &exitMenu);
 
 
 void run_ScottsTangerineDream(TFT_eSPI &tft, Adafruit_seesaw &ss) {
+  // Create PSRAM sprite buffer
+  TFT_eSprite *sprite = new TFT_eSprite(&tft);
+  sprite->setColorDepth(16);
+  sprite->setAttribute(PSRAM_ENABLE, true);
+  
+  if (!sprite->createSprite(GAME_W, GAME_H)) {
+    Serial.println("Failed to create sprite - not enough PSRAM!");
+    delete sprite;
+    return;
+  }
+  
   static TangerinePlayer player;
   char world[7*7];
   TangerineSprite enemies[MAX_ENEMIES];
@@ -200,9 +211,9 @@ void run_ScottsTangerineDream(TFT_eSPI &tft, Adafruit_seesaw &ss) {
     prevA = false;
   };
 
-  splashScreen(tft,ss,player,cur_album,world,enemies,num_enemies,cd_collected,player_lives);
+  splashScreen(tft, sprite, ss, player, cur_album, world, enemies, num_enemies, cd_collected, player_lives);
   cur_album = 0;
-  loadLevel(cur_album,player,world,enemies,num_enemies,cd_collected,player_lives);
+  loadLevel(cur_album, player, world, enemies, num_enemies, cd_collected, player_lives);
 
   static unsigned long lastDraw=0;
   static int frameShot=0;
@@ -236,71 +247,79 @@ void run_ScottsTangerineDream(TFT_eSPI &tft, Adafruit_seesaw &ss) {
     int shotShow = 0;
     float shotLen = 0;
     if(btnA && !prevA) {
-      fireAtEnemies(tft, player, enemies, num_enemies, &shotShow, &shotLen, world);
+      fireAtEnemies(sprite, player, enemies, num_enemies, &shotShow, &shotLen, world);
       frameShot = 2;
       lastShotLen = shotLen;
     }
     prevA = btnA;
 
-    checkCDPickup(tft, player, world, cd_collected, cur_album);
+    checkCDPickup(tft, sprite, player, world, cd_collected, cur_album);
     bool restart = false;
-    checkEnemyTouch(tft, player, enemies, num_enemies, player_lives, cur_album, world, ss, cd_collected, restart, exitMenu);
+    checkEnemyTouch(tft, sprite, ss, player, enemies, num_enemies, player_lives, cur_album, world, cd_collected, restart, exitMenu);
     if(exitMenu) break;
     if(restart) {
       cur_album = 0;
-      loadLevel(cur_album,player,world,enemies,num_enemies,cd_collected,player_lives);
-      splashScreen(tft,ss,player,cur_album,world,enemies,num_enemies,cd_collected,player_lives);
+      loadLevel(cur_album, player, world, enemies, num_enemies, cd_collected, player_lives);
+      splashScreen(tft, sprite, ss, player, cur_album, world, enemies, num_enemies, cd_collected, player_lives);
     }
 
     if (frameShot > 0) {
-      raycastDrawDirect(tft, player, cur_album, world, enemies, num_enemies, player_lives, 1, lastShotLen);
+      raycastDrawDirect(sprite, player, cur_album, world, enemies, num_enemies, player_lives, 1, lastShotLen);
       frameShot--;
     }
     else {
-      raycastDrawDirect(tft, player, cur_album, world, enemies, num_enemies, player_lives, 0, 0);
+      raycastDrawDirect(sprite, player, cur_album, world, enemies, num_enemies, player_lives, 0, 0);
     }
+    
+    // Push complete frame to screen (no flicker!)
+    sprite->pushSprite(0, 0);
 
     if(cd_collected) {
       delay(350);
       cur_album++;
       if(cur_album>=NUM_CDS) {
-        tft.fillScreen(TFT_BLACK);
-        tft.setTextDatum(MC_DATUM);
-        tft.setTextColor(TFT_GREEN,TFT_BLACK);
-        tft.drawString("YOU DREAMED THEM ALL!",GAME_W/2,GAME_H/2-38,4);
-        tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-        tft.drawString("PRESS ANY BTN FOR NEW GAME", GAME_W/2,GAME_H/2+48,3);
+        sprite->fillSprite(TFT_BLACK);
+        sprite->setTextDatum(MC_DATUM);
+        sprite->setTextColor(TFT_GREEN, TFT_BLACK);
+        sprite->drawString("YOU DREAMED THEM ALL!", GAME_W/2, GAME_H/2-38, 4);
+        sprite->setTextColor(TFT_YELLOW, TFT_BLACK);
+        sprite->drawString("PRESS ANY BTN FOR NEW GAME", GAME_W/2, GAME_H/2+48, 3);
+        sprite->pushSprite(0, 0);
+        
         waitAllRelease();
         do{ updateInputs(); if(btnA||btnB||btnX||btnY||btnSelect) break; delay(10);} while(1);
-        splashScreen(tft,ss,player,cur_album,world,enemies,num_enemies,cd_collected,player_lives);
+        splashScreen(tft, sprite, ss, player, cur_album, world, enemies, num_enemies, cd_collected, player_lives);
         cur_album=0;
-        loadLevel(cur_album,player,world,enemies,num_enemies,cd_collected,player_lives);
+        loadLevel(cur_album, player, world, enemies, num_enemies, cd_collected, player_lives);
       }
       else {
-        loadLevel(cur_album,player,world,enemies,num_enemies,cd_collected,player_lives);
+        loadLevel(cur_album, player, world, enemies, num_enemies, cd_collected, player_lives);
       }
     }
   }
+  
+  sprite->deleteSprite();
+  delete sprite;
   tft.fillScreen(TFT_BLACK);
 }
 
-// --------- HELPERS (functions) -------------
+// --------- HELPERS (functions) - updated to use sprite -------------
 
 inline bool isWall(int mx, int my, char* world) {
   if(mx<0 || mx>=7 || my<0 || my>=7) return true;
   return world[my*7+mx]=='#';
 }
 
-void drawTangerine(TFT_eSPI &tft, int x, int y, int r) {
-  tft.fillCircle(x, y, r, TFT_ORANGE);
-  tft.drawCircle(x, y, r, TFT_BROWN);
-  tft.fillRect(x-8, y-r+2, 16, (r/2), TFT_GREEN);
-  tft.drawLine(x-7, y-r+2, x+7, y-r+(r/2), TFT_DARKGREEN);
-  tft.drawLine(x+7, y-r+2, x-7, y-r+(r/2), TFT_DARKGREEN);
-  tft.fillTriangle(x-3, y-r+11, x-19, y-r+18, x-7, y-r+21, TFT_GREEN);
+void drawTangerine(TFT_eSprite *sprite, int x, int y, int r) {
+  sprite->fillCircle(x, y, r, TFT_ORANGE);
+  sprite->drawCircle(x, y, r, TFT_BROWN);
+  sprite->fillRect(x-8, y-r+2, 16, (r/2), TFT_GREEN);
+  sprite->drawLine(x-7, y-r+2, x+7, y-r+(r/2), TFT_DARKGREEN);
+  sprite->drawLine(x+7, y-r+2, x-7, y-r+(r/2), TFT_DARKGREEN);
+  sprite->fillTriangle(x-3, y-r+11, x-19, y-r+18, x-7, y-r+21, TFT_GREEN);
 }
 
-void drawCD(TFT_eSPI &tft, float depth, int sx, const char* cdLabel) {
+void drawCD(TFT_eSprite *sprite, float depth, int sx, const char* cdLabel) {
   int cdh = GAME_H / (depth*2.5f);
   if(cdh<9 || sx<0 || sx>=GAME_W) return;
   int y0  = GAME_H/2 - cdh/2;
@@ -312,47 +331,45 @@ void drawCD(TFT_eSPI &tft, float depth, int sx, const char* cdLabel) {
     for(float th=th1; th<th2; th+=0.059) {
       int x1 = sx + cos(th) * (cdh/2-1);
       int y1 = y0+cdh/2 + sin(th) * (cdh/2-1);
-      tft.drawLine(sx, y0+cdh/2, x1, y1, rainbow[a]);
+      sprite->drawLine(sx, y0+cdh/2, x1, y1, rainbow[a]);
     }
   }
-  tft.fillEllipse(sx-cdh/7, y0+cdh/2-cdh/6, cdh/10, cdh/13, TFT_WHITE);
-  tft.fillEllipse(sx, y0+cdh/2, cdh/4, cdh/4, TFT_BLACK);
+  sprite->fillEllipse(sx-cdh/7, y0+cdh/2-cdh/6, cdh/10, cdh/13, TFT_WHITE);
+  sprite->fillEllipse(sx, y0+cdh/2, cdh/4, cdh/4, TFT_BLACK);
 
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
+  sprite->setTextColor(TFT_WHITE, TFT_BLACK);
+  sprite->setTextDatum(MC_DATUM);
   int fontSize = cdh > 60 ? 4 : (cdh > 36 ? 2 : 1);
-  tft.drawString(cdLabel, sx, y0+cdh/2, fontSize);
+  sprite->drawString(cdLabel, sx, y0+cdh/2, fontSize);
 }
 
-void drawEnemy(TFT_eSPI &tft, float depth, int sx) {
+void drawEnemy(TFT_eSprite *sprite, float depth, int sx) {
   int sz = GAME_H/(depth*2.1f);
   if(sz<10 || sx<0 || sx>=GAME_W) return;
   int y0 = GAME_H/2-sz/2;
-  drawTangerine(tft, sx, y0+sz/2, sz/2-2);
+  drawTangerine(sprite, sx, y0+sz/2, sz/2-2);
 }
 
-void drawShotRay(TFT_eSPI &tft, float len) {
+void drawShotRay(TFT_eSprite *sprite, float len) {
   int x0 = GAME_W / 2;
   int y0 = GAME_H - 1;
   int x1 = GAME_W / 2;
   int y1 = GAME_H / 2;
   for (int i = -3; i <= 3; i++) {
-    tft.drawLine(x0 + i, y0, x1 + i, y1, TFT_RED);
+    sprite->drawLine(x0 + i, y0, x1 + i, y1, TFT_RED);
   }
 }
 
-void splashScreen(TFT_eSPI &tft, Adafruit_seesaw &ss, TangerinePlayer &player, int &cur_album, char* world, TangerineSprite* enemies, int &num_enemies, int &cd_collected, int &player_lives) {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
+void splashScreen(TFT_eSPI &tft, TFT_eSprite *sprite, Adafruit_seesaw &ss, TangerinePlayer &player, int &cur_album, char* world, TangerineSprite* enemies, int &num_enemies, int &cd_collected, int &player_lives) {
+  sprite->fillSprite(TFT_BLACK);
+  sprite->setTextDatum(MC_DATUM);
 
-  drawTangerine(tft, GAME_W/2-142, GAME_H/2+24, 36);
-  drawTangerine(tft, GAME_W/2+142, GAME_H/2+24, 36);
+  drawTangerine(sprite, GAME_W/2-142, GAME_H/2+24, 36);
+  drawTangerine(sprite, GAME_W/2+142, GAME_H/2+24, 36);
 
-  // "SCOTT'S" up a bit
-  tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-  tft.drawString("SCOTT'S", GAME_W/2, 24, 2);
+  sprite->setTextColor(TFT_ORANGE, TFT_BLACK);
+  sprite->drawString("SCOTT'S", GAME_W/2, 24, 2);
 
-  // "TANGERINE DREAM" in rainbow, font 2
   const char *txt = "TANGERINE DREAM";
   int L = strlen(txt);
   int px = GAME_W/2 - (L*13)/2 + 8;
@@ -360,34 +377,28 @@ void splashScreen(TFT_eSPI &tft, Adafruit_seesaw &ss, TangerinePlayer &player, i
   for (int i = 0; i < L; i++) {
     char one[2]{txt[i], 0};
     int colidx = (i+2)%6;
-    tft.setTextColor(tCols[colidx], TFT_BLACK);
-    tft.drawString(one, px + i*13, 58, 2);
+    sprite->setTextColor(tCols[colidx], TFT_BLACK);
+    sprite->drawString(one, px + i*13, 58, 2);
   }
 
-  // FPS Edition - extra small (font 0)
-  tft.setTextColor(TFT_CYAN, TFT_BLACK);
-  tft.drawString("FPS EDITION", GAME_W/2, 90, 0);
+  sprite->setTextColor(TFT_CYAN, TFT_BLACK);
+  sprite->drawString("FPS EDITION", GAME_W/2, 90, 0);
+  sprite->drawString("Control: Move/Turn with joystick", GAME_W/2, 113, 1);
 
-  // Controls
-  tft.drawString("Control: Move/Turn with joystick", GAME_W/2, 113, 1);
+  sprite->setTextColor(TFT_RED, TFT_BLACK);
+  sprite->drawString("A: FIRE", GAME_W/2, 164, 1);
 
-  // A: FIRE
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.drawString("A: FIRE", GAME_W/2, 164, 1);
+  sprite->setTextColor(TFT_YELLOW, TFT_BLACK);
+  sprite->drawString("Collect: CD's", GAME_W/2, 200, 1);
 
-  // Collect CDs
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString("Collect: CD's", GAME_W/2, 200, 1);
+  sprite->setTextColor(TFT_WHITE, TFT_BLACK);
+  sprite->drawString("Beware of Floating Tangerines!", GAME_W/2, 250, 1);
 
-  // Beware - move down to y=250
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Beware of Floating Tangerines!", GAME_W/2, 250, 1);
+  sprite->setTextColor(TFT_GREEN, TFT_BLACK);
+  sprite->drawString("Press ANY button...", GAME_W/2, 285, 1);
+  
+  sprite->pushSprite(0, 0);
 
-  // Press Any... - move down to y=285
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.drawString("Press ANY button...", GAME_W/2, 285, 1);
-
-  // Button wait as before
   bool btnA=false, btnB=false, btnX=false, btnY=false, btnSelect=false;
   do {
     btnA = !ss.digitalRead(BUTTON_A);
@@ -397,7 +408,9 @@ void splashScreen(TFT_eSPI &tft, Adafruit_seesaw &ss, TangerinePlayer &player, i
     btnSelect = !ss.digitalRead(BUTTON_SELECT);
     delay(13);
   } while(!btnA && !btnB && !btnX && !btnY && !btnSelect);
-  tft.fillScreen(TFT_BLACK);
+  
+  sprite->fillSprite(TFT_BLACK);
+  sprite->pushSprite(0, 0);
   delay(120);
 }
 
@@ -440,8 +453,8 @@ void loadLevel(int which, TangerinePlayer &player, char* world, TangerineSprite*
   player_lives=3;
 }
 
-void raycastDrawDirect(TFT_eSPI &tft, TangerinePlayer &player, int cur_album, char* world, TangerineSprite* enemies, int num_enemies, int player_lives, int shotShow, float shotLen) {
-  tft.fillScreen(TFT_BLACK);
+void raycastDrawDirect(TFT_eSprite *sprite, TangerinePlayer &player, int cur_album, char* world, TangerineSprite* enemies, int num_enemies, int player_lives, int shotShow, float shotLen) {
+  sprite->fillSprite(TFT_BLACK);
   const uint16_t* wallCols = wallColorSets[cur_album%NUM_WALL_SETS];
 
   float px = player.x, py = player.y, pa = player.angle;
@@ -460,11 +473,11 @@ void raycastDrawDirect(TFT_eSPI &tft, TangerinePlayer &player, int cur_album, ch
     int h = int(GAME_H/(dist*1.2f));
     h = constrain(h,8,GAME_H);
     int top = GAME_H/2 - h/2;
-    tft.fillRect(wall_x, top, wall_col_w, h, col);
-    tft.fillRect(wall_x, top+h, wall_col_w, GAME_H/2-h/2, TFT_DARKGREY);
-    tft.fillRect(wall_x, 0, wall_col_w, top, TFT_BLACK);
+    sprite->fillRect(wall_x, top, wall_col_w, h, col);
+    sprite->fillRect(wall_x, top+h, wall_col_w, GAME_H/2-h/2, TFT_DARKGREY);
+    sprite->fillRect(wall_x, 0, wall_col_w, top, TFT_BLACK);
   }
-  if (shotShow) drawShotRay(tft, shotLen);
+  if (shotShow) drawShotRay(sprite, shotLen);
   for(int e=0;e<num_enemies;e++) if(enemies[e].alive) {
     float dx=enemies[e].x-px, dy=enemies[e].y-py;
     float dist = sqrtf(dx*dx+dy*dy);
@@ -474,7 +487,7 @@ void raycastDrawDirect(TFT_eSPI &tft, TangerinePlayer &player, int cur_album, ch
     float fov2 = FOV_DEG*3.14159f/180.0f;
     if(fabsf(angle2)<fov2/2 && dist>0.45f) {
       int sx = GAME_W/2 + (angle2/(fov2/2))*GAME_W/2;
-      drawEnemy(tft, dist, sx);
+      drawEnemy(sprite, dist, sx);
     }
   }
   for(int y=0;y<7;y++)
@@ -488,18 +501,18 @@ void raycastDrawDirect(TFT_eSPI &tft, TangerinePlayer &player, int cur_album, ch
         float fov2 = FOV_DEG*3.14159f/180.0f;
         if(fabsf(angle2) < fov2/2 && dist>0.34f) {
           int sx = GAME_W/2 + (angle2/(fov2/2))*GAME_W/2;
-          drawCD(tft, dist, sx, cdNames[cur_album]);
+          drawCD(sprite, dist, sx, cdNames[cur_album]);
         }
       }
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);
-  tft.setTextDatum(TL_DATUM);
-  tft.drawString(cdNames[cur_album], 10, 7, 2);
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString("Lives:", 160, 7, 2);
-  tft.drawNumber(player_lives, 225, 7, 2);
+  sprite->setTextColor(TFT_WHITE, TFT_BLACK);
+  sprite->setTextDatum(TL_DATUM);
+  sprite->drawString(cdNames[cur_album], 10, 7, 2);
+  sprite->setTextColor(TFT_YELLOW, TFT_BLACK);
+  sprite->drawString("Lives:", 160, 7, 2);
+  sprite->drawNumber(player_lives, 225, 7, 2);
 }
 
-void fireAtEnemies(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enemies, int num_enemies, int *outShot, float *outLen, char* world) {
+void fireAtEnemies(TFT_eSprite *sprite, TangerinePlayer &player, TangerineSprite* enemies, int num_enemies, int *outShot, float *outLen, char* world) {
   float fx=player.x, fy=player.y, dx=cosf(player.angle), dy=sinf(player.angle);
   float shotEnd = 1.6f;
   for(float dd=0.12f; dd<2.8f; dd+=0.09f) {
@@ -513,10 +526,11 @@ void fireAtEnemies(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enem
           shotEnd = dd*GAME_H/2.6f;
           *outShot = 1;
           *outLen = shotEnd;
-          tft.fillCircle(GAME_W/2, GAME_H/2, 35, TFT_YELLOW);
-          tft.setTextColor(TFT_RED,TFT_YELLOW);
-          tft.setTextDatum(MC_DATUM);
-          tft.drawString("TANGERINATED!", GAME_W/2, GAME_H/2, 4);
+          sprite->fillCircle(GAME_W/2, GAME_H/2, 35, TFT_YELLOW);
+          sprite->setTextColor(TFT_RED, TFT_YELLOW);
+          sprite->setTextDatum(MC_DATUM);
+          sprite->drawString("TANGERINATED!", GAME_W/2, GAME_H/2, 4);
+          sprite->pushSprite(0, 0);
           delay(500);
           return;
         }
@@ -534,41 +548,46 @@ void fireAtEnemies(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enem
   *outLen = shotEnd;
 }
 
-void checkCDPickup(TFT_eSPI &tft, TangerinePlayer &player, char* world, int &cd_collected, int cur_album) {
+void checkCDPickup(TFT_eSPI &tft, TFT_eSprite *sprite, TangerinePlayer &player, char* world, int &cd_collected, int cur_album) {
   int cx = int(player.x), cy = int(player.y);
   if(world[cy*7+cx]=='C') {
     world[cy*7+cx]='.';
     cd_collected = 1;
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextDatum(MC_DATUM);
-    tft.setTextColor(TFT_YELLOW, TFT_BROWN);
-    tft.drawString(cdNames[cur_album], GAME_W/2, GAME_H/2-36, 4);
-    tft.setTextColor(TFT_ORANGE,TFT_BLACK);
-    tft.drawString("CD COLLECTED!", GAME_W/2,GAME_H/2+32,4);
+    sprite->fillSprite(TFT_BLACK);
+    sprite->setTextDatum(MC_DATUM);
+    sprite->setTextColor(TFT_YELLOW, TFT_BROWN);
+    sprite->drawString(cdNames[cur_album], GAME_W/2, GAME_H/2-36, 4);
+    sprite->setTextColor(TFT_ORANGE, TFT_BLACK);
+    sprite->drawString("CD COLLECTED!", GAME_W/2, GAME_H/2+32, 4);
+    sprite->pushSprite(0, 0);
     delay(900);
   }
 }
 
-void checkEnemyTouch(TFT_eSPI &tft, TangerinePlayer &player, TangerineSprite* enemies, int &num_enemies, int &player_lives, int &cur_album, char* world, Adafruit_seesaw &ss, int &cd_collected, bool &restart, bool &exitMenu) {
+void checkEnemyTouch(TFT_eSPI &tft, TFT_eSprite *sprite, Adafruit_seesaw &ss, TangerinePlayer &player, TangerineSprite* enemies, int &num_enemies, int &player_lives, int &cur_album, char* world, int &cd_collected, bool &restart, bool &exitMenu) {
   for(int e=0;e<num_enemies;e++) if(enemies[e].alive) {
     float dist=sqrtf((player.x-enemies[e].x)*(player.x-enemies[e].x)+(player.y-enemies[e].y)*(player.y-enemies[e].y));
     if(dist<0.27f) {
       enemies[e].alive=0;
       player_lives--;
-      tft.fillScreen(TFT_BLACK);
-      tft.setTextDatum(MC_DATUM);
-      tft.setTextColor(TFT_RED, TFT_BLACK);
-      tft.drawString("TANGERINED!", GAME_W/2, GAME_H/2, 6);
+      sprite->fillSprite(TFT_BLACK);
+      sprite->setTextDatum(MC_DATUM);
+      sprite->setTextColor(TFT_RED, TFT_BLACK);
+      sprite->drawString("TANGERINED!", GAME_W/2, GAME_H/2, 6);
+      sprite->pushSprite(0, 0);
       delay(700);
       if(player_lives<=0) {
-        tft.fillScreen(TFT_BLACK);
-        tft.setTextDatum(MC_DATUM);
-        tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-        tft.drawString("The Dream is over", GAME_W/2, GAME_H/2, 4);
+        sprite->fillSprite(TFT_BLACK);
+        sprite->setTextDatum(MC_DATUM);
+        sprite->setTextColor(TFT_ORANGE, TFT_BLACK);
+        sprite->drawString("The Dream is over", GAME_W/2, GAME_H/2, 4);
+        sprite->pushSprite(0, 0);
         delay(1000);
 
-        tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.drawString("A: Restart   SELECT: Menu", GAME_W/2, GAME_H/2+36, 2);
+        sprite->setTextColor(TFT_WHITE, TFT_BLACK);
+        sprite->drawString("A: Restart   SELECT: Menu", GAME_W/2, GAME_H/2+36, 2);
+        sprite->pushSprite(0, 0);
+        
         // Wait for A or SELECT
         bool restartBtn=false, menuBtn=false;
         do {
