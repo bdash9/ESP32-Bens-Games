@@ -50,6 +50,7 @@ void run_FlightFight(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_Psycho_Flight(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_Flappy_Cave(TFT_eSPI &tft, Adafruit_seesaw &ss);
 void run_Rip_Off(TFT_eSPI &tft, Adafruit_seesaw &ss); 
+void run_DeathStarRun(TFT_eSPI &tft, Adafruit_seesaw &ss); 
 
 
 // ------------ Menu Items ---------------
@@ -68,7 +69,8 @@ const char* game_titles[] = {
     "Flight Fight",
     "Psycho Flight",
     "Flappy Cave",
-    "Rip Off"   
+    "Rip Off",
+    "Death Star Run"    
 };
 enum {
     GORDOKONG_INDEX = 0,
@@ -86,6 +88,7 @@ enum {
     PSYCHO_FLIGHT_INDEX,
     FLAPPY_CAVE_INDEX,
     RIP_OFF_INDEX,
+    DEATH_STAR_RUN_INDEX,
     NUM_GAMES
 };
 int selected_game = 0;
@@ -260,6 +263,8 @@ void loop() {
                 run_Flappy_Cave(tft, ss); break;
             case RIP_OFF_INDEX:
                 run_Rip_Off(tft, ss); break;
+            case DEATH_STAR_RUN_INDEX:  
+                run_DeathStarRun(tft, ss); break;
         }
         drawMenu(selected_game);
     }
@@ -282,3 +287,9 @@ void loop() {
 #include "Psycho_Flight.h"
 #include "Flappy_Cave.h"
 #include "Rip_Off.h"
+#include "Death_Star_Run.h"
+
+// Death Star Run wrapper
+void run_DeathStarRun(TFT_eSPI &tft, Adafruit_seesaw &ss) {
+    DeathStarRun::playGame(tft, ss);
+}
